@@ -3,6 +3,7 @@ library(dplyr)
 library(googlesheets)
 library(DT)
 library(jsonlite)
+library(tidyr)
 
 shinyServer(
   function(input, output, session) {
