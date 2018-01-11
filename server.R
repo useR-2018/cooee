@@ -46,15 +46,6 @@ shinyServer(
       h4("Last synchronised... %TODO")
     })
     
-    # output$n_entries <- renderUI({
-    #   if(length(v$data) > 0){
-    #     p(paste0("Total entries: ", NROW(v$data)))
-    #   }
-    #   else{
-    #     NULL
-    #   }
-    # })
-    
     observe(
       if (!is.null(isolate(access_token()))) {
         v$reviews <- gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=2)
