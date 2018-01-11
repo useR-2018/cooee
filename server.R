@@ -4,6 +4,7 @@ library(googlesheets)
 library(DT)
 library(jsonlite)
 library(tidyr)
+library(purrr)
 
 shinyServer(
   function(input, output, session) {
