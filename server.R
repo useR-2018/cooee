@@ -63,7 +63,8 @@ shinyServer(
           summarise(Reviews = n()) %>%
           full_join(gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=1) %>% mutate(id = row_number()),
                     by = "id") %>%
-          replace_na(list(Reviews = 0))
+          replace_na(list(Reviews = 0)) %>%
+          arrange(Reviews, `Surname`)
       }
       else{
         v$data <- NULL
@@ -74,7 +75,6 @@ shinyServer(
     output$tbl_applicants <- DT::renderDataTable({
       if(length(v$data) > 0){
         v$data %>%
-          arrange(Reviews, `Surname`) %>%
           transmute(Entrant = paste(`First name`, `Surname`), Reviews = Reviews) %>%
           datatable(rownames = FALSE, selection = "single", style = "bootstrap", class = "hover")
       }
