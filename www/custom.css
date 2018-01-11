@@ -18,3 +18,7 @@
 .navbar-nav .dropdown .shiny-html-output i{
 	color: #fff;
 }*/
+
+.table-hover > tbody > tr:hover{
+	background-color: #555
+}

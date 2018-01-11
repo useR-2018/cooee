@@ -6,20 +6,33 @@ shinyUI(
   dashboardPage(
     dashboardHeader(
       title = "useR 2018 Application Review",
-      titleWidth = "33vw"
+      titleWidth = "450px"
     ),
     dashboardSidebar(
-      width = "33vw",
+      width = "450px",
       uiOutput("auth"),
       uiOutput("sync"),
-      sidebarSearchForm("txt_search", "btn_search"),
+      # uiOutput("n_entries"),
+      uiOutput("filters"),
       DT::dataTableOutput("tbl_applicants"),
-      actionButton("btn_debug", "debug")
+      sidebarMenu(
+        tags$li(
+          actionLink("btn_debug",
+                     style = "margin: 0;",
+                     label = NULL,
+                     class = "",
+                     icon("bug"),
+                     span("Debug")
+          )
+        )
+      )
     ),
     dashboardBody(
       tags$head(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
-      )
+      ),
+      uiOutput("abstract"),
+      uiOutput("review")
     )
   )
 )
