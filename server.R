@@ -52,26 +52,28 @@ shinyServer(
     })
     
     output$sync <- renderUI({
-      h4("Last synchronised... %TODO")
+      strong(paste0("Last synchronised: ", v$lastSync))
     })
-    
-    observe(
+
+    observeEvent(input$btn_sync,{
       if (!is.null(isolate(access_token()))) {
         v$reviews <- gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=2)
-        v$data <- v$reviews %>%
+        v$data <- isolate(v$reviews) %>%
           group_by(id) %>%
           summarise(Reviews = n()) %>%
           full_join(gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=1) %>% mutate(id = row_number()),
                     by = "id") %>%
           replace_na(list(Reviews = 0)) %>%
           arrange(Reviews, `Surname`)
+        v$reviews <- v$reviews %>%
+          filter(reviewer == gs_user()$user$emailAddress) #%>%
+          # group_by(id) %>%
+          # filter(Timestamp == max(Timestamp))
+        
+        v$lastSync <- Sys.time()
       }
-      else{
-        v$data <- NULL
-        v$reviews <- NULL
-      }
-    )
-    
+    })
+
     output$tbl_applicants <- DT::renderDataTable({
       if(length(v$data) > 0){
         v$data %>%
