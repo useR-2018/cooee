@@ -12,9 +12,6 @@ shinyUI(
       width = "450px",
       uiOutput("auth"),
       uiOutput("sync"),
-      # uiOutput("n_entries"),
-      uiOutput("filters"),
-      DT::dataTableOutput("tbl_applicants"),
       sidebarMenu(
         tags$li(
           actionLink("btn_debug",
@@ -24,8 +21,20 @@ shinyUI(
                      icon("bug"),
                      span("Debug")
           )
+        ),
+        tags$li(
+          actionLink("btn_sync",
+                     style = "margin: 0;",
+                     label = NULL,
+                     class = "",
+                     icon("refresh"),
+                     span("Synchronise")
+          )
         )
-      )
+      ),
+      # uiOutput("n_entries"),
+      hr(),
+      DT::dataTableOutput("tbl_applicants")
     ),
     dashboardBody(
       tags$head(

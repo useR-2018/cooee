@@ -11,9 +11,18 @@ shinyServer(
     
     source("helpers.R")
     
-    v <- reactiveValues(
-      data = list()
-    )
+    if("cache.Rdata" %in% list.files()){
+      load("cache.Rdata")
+    }
+    else{
+      v <- reactiveValues(
+        reviews = list(),
+        data = list(),
+        changes = list(),
+        online = FALSE,
+        lastSync = "Never"
+      )
+    }
     
     output$auth <- renderUI({
       if (is.null(isolate(access_token()))) {
@@ -135,6 +144,11 @@ shinyServer(
     
     observeEvent(input$btn_debug, {
       browser()
+    })
+    
+    
+    onStop(function(){
+      save(v, file = "cache.Rdata")
     })
   }
 )
