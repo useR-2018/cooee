@@ -18,17 +18,31 @@ shinyServer(
         changes = list(),
         online = FALSE,
         lastSync = "Never",
-        lastID = 1,
+        ID = 1,
         firstRun = TRUE
       )
     }
     
-    latest_reviews <- reactive(v$reviews %>%
-                                 bind_rows(v$changes) %>%
-                                 group_by(id, reviewer) %>%
-                                 filter(timestamp == max(timestamp)) %>%
-                                 ungroup
-                               )
+    latest_reviews <- reactive({
+      notif_data <- showNotification("Constructing dataset")
+      out <- v$reviews %>%
+        bind_rows(v$changes) %>%
+        filter(reviewer == gs_user()$user$emailAddress) %>%
+        group_by(id) %>%
+        filter(timestamp == max(timestamp)) %>%
+        ungroup
+      removeNotification(notif_data)
+      out
+      })
+    
+    tbl_data <- reactive(
+      v$reviews %>%
+        group_by(id) %>%
+        summarise(Reviews = n()) %>%
+        full_join(v$data, by = "id") %>%
+        replace_na(list(Reviews = 0)) %>%
+        arrange(Reviews, `Surname`)
+    )
     
     output$auth <- renderUI({
       if (is.null(isolate(access_token()))) {
@@ -65,36 +79,33 @@ shinyServer(
       if(!v$firstRun & input$btn_sync == 0){
         return()
       }
-      invalidateLater(300000)
       if (!is.null(access_token())) {
-        v$reviews <- gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=2)
-        v$data <- isolate(v$reviews) %>%
-          group_by(id) %>%
-          summarise(Reviews = n()) %>%
-          full_join(gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=1) %>% mutate(id = row_number()),
-                    by = "id") %>%
-          replace_na(list(Reviews = 0)) %>%
-          arrange(Reviews, `Surname`)
-        v$reviews <- v$reviews %>%
-          filter(reviewer == gs_user()$user$emailAddress) #%>%
-          # group_by(id) %>%
-          # filter(Timestamp == max(Timestamp))
-        
-        if(NROW(v$changes) > 0){
-          gs_add_row(gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ"), ws = 2, input = v$changes)
-          isolate(v$changes <- list())
-        }
-        
-        v$firstRun <- FALSE
-        v$lastSync <- Sys.time()
+        notif_sync <- showNotification("Synchronising... Please wait", duration = NULL)
+        isolate({
+          ## Upload changes
+          if(NROW(v$changes) > 0){
+            gs_add_row(gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ"), ws = 2, input = v$changes)
+            v$changes <- list()
+          }
+          
+          ## Download data
+          v$data <- gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=1) %>% mutate(id = row_number())
+          
+          ## Download reviews
+          v$reviews <- gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=2)
+          
+          v$firstRun <- FALSE
+          v$lastSync <- Sys.time()
+        })
+        removeNotification(notif_sync)
       }
     })
 
     output$tbl_applicants <- DT::renderDataTable({
       if(length(v$data) > 0){
-        v$data %>%
+        tbl_data() %>%
           transmute(Entrant = paste(`First name`, `Surname`), Reviews = Reviews) %>%
-          datatable(rownames = FALSE, selection = list(mode = "single", selected = isolate(v$lastID)), style = "bootstrap", class = "hover")
+          datatable(rownames = FALSE, selection = list(mode = "single", selected = isolate(v$ID)), style = "bootstrap", class = "hover")
       }
       else{
         NULL
@@ -102,28 +113,12 @@ shinyServer(
     })
     
     observeEvent(input$tbl_applicants_rows_selected,{
-      # Save
-      if(length(input$accept) > 0){
-        if(input$accept != "Undecided" & input$comment != ""){
-          v$changes <- v$changes %>%
-            bind_rows(
-              tibble(
-                id = v$lastID,
-                timestamp = format(Sys.time(), tz="GMT"),
-                reviewer = gs_user()$user$emailAddress,
-                accept = input$accept,
-                comment = input$comment
-              )
-            )
-        }
-      }
-      
       # Update
-      v$lastID <- v$data %>% 
+      v$ID <- tbl_data() %>% 
         filter(row_number() == input$tbl_applicants_rows_selected) %>%
         pull(id)
       
-      print(v$data %>% 
+      print(tbl_data() %>% 
               filter(row_number() == input$tbl_applicants_rows_selected))
         
       output$abstract <- renderUI({
@@ -133,8 +128,8 @@ shinyServer(
                 width = 12)
           )
         }
-        applicant_data <- v$data %>%
-          filter(id == v$lastID)
+        applicant_data <- tbl_data() %>%
+          filter(id == v$ID)
         tagList(
           box(
             title = applicant_data$`Title (of tutorial)`,
@@ -174,12 +169,11 @@ shinyServer(
       
       
       output$review <- renderUI({
-        isolate({
         if(is.null(input$tbl_applicants_rows_selected)){
           return()
         }
         review_data <- latest_reviews() %>%
-          filter(id == v$lastID)
+          filter(id == v$ID)
         print(review_data)
         box(width = 12,
             title = "Evaluation",
@@ -190,15 +184,8 @@ shinyServer(
                                 label = "Decision", 
                                 choices = c("Undecided", "Accept", "Reject"), 
                                 selected = ifelse(length(review_data %>% pull(accept))==1, review_data %>% pull(accept), "Undecided")
-                   )#,
-                   # actionLink(
-                   #   "save",
-                   #   box(
-                   #     p("Save", style="text-align: center;"),
-                   #     width = NULL,
-                   #     background = ifelse(any(input$accept=="Accept"), "green", "red")
-                   #   )
-                   # )
+                   ),
+                   uiOutput("ui_save")
             ),
             column(10,
                    textAreaInput("comment",
@@ -208,20 +195,49 @@ shinyServer(
                   )
             )
         )
-        })
+      })
+      
+      
+      output$ui_save <- renderUI({
+        actionLink(
+          "save",
+          box(
+            p("Save", style="text-align: center;"),
+            width = NULL,
+            background = switch(input$accept,
+                                Undecided = "aqua",
+                                Accept = "green",
+                                Reject = "red")
+          )
+        )
       })
     })
+  
     
     observeEvent(input$btn_debug, {
       browser()
     })
     
-    # observeEvent(input$accept,{
-    #   curInputs$accept <- input$accept
-    # })
-    # observeEvent(input$comment,{
-    #   curInputs$comment <- input$comment
-    # })
+    observeEvent(input$save, {
+      v$changes <- v$changes %>%
+        bind_rows(
+          tibble(
+            id = v$ID,
+            timestamp = format(Sys.time(), tz="GMT"),
+            reviewer = gs_user()$user$emailAddress,
+            accept = input$accept,
+            comment = input$comment
+          )
+        )
+      if(input$net_mode == "Online"){
+        notif_save <- showNotification("Uploading review.")
+        gs_add_row(gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ"), ws = 2, input = v$changes)
+        removeNotification(notif_save)
+        v$reviews <- v$reviews %>%
+          bind_rows(v$changes)
+        v$changes <- list()
+      }
+    })
     
     # session$onFlushed(function(){
     #   updater$resume()

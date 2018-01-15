@@ -12,6 +12,7 @@ shinyUI(
       width = "450px",
       uiOutput("auth"),
       uiOutput("sync"),
+      radioButtons("net_mode", "Operation Mode", c("Online", "Offline"), inline = TRUE),
       sidebarMenu(
         tags$li(
           actionLink("btn_debug",
