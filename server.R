@@ -9,7 +9,9 @@ shinyServer(
     source("helpers.R")
     
     if("cache.Rdata" %in% list.files()){
+      notif_cache <- showNotification("Loading cache")
       load("cache.Rdata")
+      removeNotification(notif_cache)
     }
     else{
       v <- reactiveValues(
@@ -23,6 +25,8 @@ shinyServer(
       )
     }
     
+    notif_ui <- showNotification("Building UI")
+    
     latest_reviews <- reactive({
       notif_data <- showNotification("Constructing dataset")
       out <- v$reviews %>%
@@ -35,14 +39,18 @@ shinyServer(
       out
       })
     
-    tbl_data <- reactive(
-      v$reviews %>%
+    tbl_data <- reactive({
+      notif_tbl <- showNotification("Updating table")
+      out <- v$reviews %>%
+        bind_rows(v$changes) %>%
         group_by(id) %>%
         summarise(Reviews = n()) %>%
         full_join(v$data, by = "id") %>%
         replace_na(list(Reviews = 0)) %>%
         arrange(Reviews, `Surname`)
-    )
+      removeNotification(notif_tbl)
+      out
+    })
     
     output$auth <- renderUI({
       if (is.null(isolate(access_token()))) {
@@ -67,7 +75,10 @@ shinyServer(
       pars <- parseQueryString(session$clientData$url_search)
       if (length(pars$code) > 0) {
         ## extract the authorization code
-        gs_webapp_get_token(auth_code = pars$code)
+        notif_auth <- showNotification("Authenticating...")
+        out <- gs_webapp_get_token(auth_code = pars$code)
+        removeNotification(notif_auth)
+        out
       }
     })
     
@@ -103,9 +114,12 @@ shinyServer(
 
     output$tbl_applicants <- DT::renderDataTable({
       if(length(v$data) > 0){
-        tbl_data() %>%
+        ui_tbl_selector <- showNotification("Building table selector")
+        out <- tbl_data() %>%
           transmute(Entrant = paste(`First name`, `Surname`), Reviews = Reviews) %>%
           datatable(rownames = FALSE, selection = list(mode = "single", selected = isolate(v$ID)), style = "bootstrap", class = "hover")
+        removeNotification(ui_tbl_selector)
+        out
       }
       else{
         NULL
@@ -246,5 +260,7 @@ shinyServer(
     onStop(function(){
       save(v, file = "cache.Rdata")
     })
+    
+    removeNotification(notif_ui)
   }
 )
