@@ -43,6 +43,8 @@ shinyServer(
       notif_tbl <- showNotification("Updating table")
       out <- v$reviews %>%
         bind_rows(v$changes) %>%
+        group_by(id, reviewer) %>%
+        filter(timestamp == max(timestamp)) %>%
         group_by(id) %>%
         summarise(Reviews = n()) %>%
         full_join(v$data, by = "id") %>%
