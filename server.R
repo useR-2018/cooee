@@ -18,14 +18,17 @@ shinyServer(
         changes = list(),
         online = FALSE,
         lastSync = "Never",
+        lastID = 1,
         firstRun = TRUE
       )
     }
     
-    curInputs <- reactiveValues(
-      accept = character(0L),
-      comment = ""
-    )
+    latest_reviews <- reactive(v$reviews %>%
+                                 bind_rows(v$changes) %>%
+                                 group_by(id, reviewer) %>%
+                                 filter(timestamp == max(timestamp)) %>%
+                                 ungroup
+                               )
     
     output$auth <- renderUI({
       if (is.null(isolate(access_token()))) {
@@ -91,7 +94,7 @@ shinyServer(
       if(length(v$data) > 0){
         v$data %>%
           transmute(Entrant = paste(`First name`, `Surname`), Reviews = Reviews) %>%
-          datatable(rownames = FALSE, selection = "single", style = "bootstrap", class = "hover")
+          datatable(rownames = FALSE, selection = list(mode = "single", selected = isolate(v$lastID)), style = "bootstrap", class = "hover")
       }
       else{
         NULL
@@ -100,21 +103,29 @@ shinyServer(
     
     observeEvent(input$tbl_applicants_rows_selected,{
       # Save
-      if(length(curInputs$accept) > 0){
-        v$changes <- v$changes %>%
-          bind_rows(
-            data.frame(
-              id = v$data %>% 
-                filter(row_number() == input$tbl_applicants_rows_selected) %>%
-                pull(id),
-              Timestamp = format(Sys.time(), tz="GMT"),
-              reviewer = gs_user()$user$emailAddress,
-              accept = input$accept,
-              comment = input$comment
+      if(length(input$accept) > 0){
+        if(input$accept != "Undecided" & input$comment != ""){
+          v$changes <- v$changes %>%
+            bind_rows(
+              tibble(
+                id = v$lastID,
+                timestamp = format(Sys.time(), tz="GMT"),
+                reviewer = gs_user()$user$emailAddress,
+                accept = input$accept,
+                comment = input$comment
+              )
             )
-          )
+        }
       }
       
+      # Update
+      v$lastID <- v$data %>% 
+        filter(row_number() == input$tbl_applicants_rows_selected) %>%
+        pull(id)
+      
+      print(v$data %>% 
+              filter(row_number() == input$tbl_applicants_rows_selected))
+        
       output$abstract <- renderUI({
         if(is.null(input$tbl_applicants_rows_selected)){
           return(
@@ -123,7 +134,7 @@ shinyServer(
           )
         }
         applicant_data <- v$data %>%
-          filter(row_number() == input$tbl_applicants_rows_selected)
+          filter(id == v$lastID)
         tagList(
           box(
             title = applicant_data$`Title (of tutorial)`,
@@ -163,20 +174,23 @@ shinyServer(
       
       
       output$review <- renderUI({
+        isolate({
         if(is.null(input$tbl_applicants_rows_selected)){
           return()
         }
-        review_data <- v$reviews %>%
-          bind_rows(v$changes) %>%
-          filter(id == input$tbl_applicants_rows_selected)
-        curInputs$accept <- review_data %>% pull(accept) %>% as.character
-        curInputs$comment <- review_data %>% pull(comment)
+        review_data <- latest_reviews() %>%
+          filter(id == v$lastID)
+        print(review_data)
         box(width = 12,
             title = "Evaluation",
             solidHeader = TRUE,
             status = "info", #ifelse(length(curInputs$accept)==0, "info", ifelse(any(curInputs$accept=="Accept"), "success", "danger")),
             column(2,
-                   radioButtons("accept", label = "Decision", choices = c("Accept", "Reject"), selected = curInputs$accept)#,
+                   radioButtons("accept", 
+                                label = "Decision", 
+                                choices = c("Undecided", "Accept", "Reject"), 
+                                selected = ifelse(length(review_data %>% pull(accept))==1, review_data %>% pull(accept), "Undecided")
+                   )#,
                    # actionLink(
                    #   "save",
                    #   box(
@@ -184,15 +198,19 @@ shinyServer(
                    #     width = NULL,
                    #     background = ifelse(any(input$accept=="Accept"), "green", "red")
                    #   )
-                   #       )
+                   # )
             ),
             column(10,
-                   textAreaInput("comment", label = "Comments", value = ifelse(length(curInputs$comment)==1, curInputs$comment, ""), rows = 6)
+                   textAreaInput("comment",
+                                 label = "Comments", 
+                                 value = ifelse(length(review_data %>% pull(comment))==1, review_data %>% pull(comment), ""), 
+                                 rows = 6
+                  )
             )
         )
+        })
       })
     })
-    
     
     observeEvent(input$btn_debug, {
       browser()
