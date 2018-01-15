@@ -117,7 +117,7 @@ shinyServer(
         ui_tbl_selector <- showNotification("Building table selector")
         out <- tbl_data() %>%
           transmute(Entrant = paste(`First name`, `Surname`), Reviews = Reviews) %>%
-          datatable(rownames = FALSE, selection = list(mode = "single", selected = isolate(v$ID)), style = "bootstrap", class = "hover")
+          datatable(rownames = FALSE, selection = list(mode = "single", selected = which((tbl_data()%>%pull(id)) == isolate(v$ID))), style = "bootstrap", class = "hover")
         removeNotification(ui_tbl_selector)
         out
       }
