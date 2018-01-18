@@ -127,15 +127,12 @@ shinyServer(
         out <- tbl_data() %>%
           transmute(Entrant = paste(`First name`, `Surname`),
                     Reviews = Reviews, 
-                    Status = paste0('<i class="fa fa-',
-                                    recode(Status, "Accept" = "check text-success", "Reject" = "times text-danger", "None" = "minus text-info"),
-                                    '"></i>')
+                    Status = Status
                     ) %>%
           datatable(rownames = FALSE, 
                     selection = list(mode = "single", selected = which((tbl_data()%>%pull(id)) == isolate(v$ID))),
                     style = "bootstrap", 
-                    class = "hover",
-                    escape = FALSE)
+                    class = "hover")
         removeNotification(ui_tbl_selector)
         out
       }
