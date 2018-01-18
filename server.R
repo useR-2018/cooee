@@ -46,9 +46,14 @@ shinyServer(
         group_by(id, reviewer) %>%
         filter(timestamp == max(timestamp)) %>%
         group_by(id) %>%
-        summarise(Reviews = n()) %>%
+        summarise(Reviews = n(),
+                  Status = tibble(reviewer, accept) %>%
+                    filter(reviewer == gs_user()$user$emailAddress) %>%
+                    pull(accept) %>% 
+                    {if(length(.) == 0) NA else .}
+        ) %>%
         full_join(v$data, by = "id") %>%
-        replace_na(list(Reviews = 0)) %>%
+        replace_na(list(Reviews = 0, Status = "None")) %>%
         arrange(Reviews, `Surname`)
       removeNotification(notif_tbl)
       out
@@ -118,7 +123,7 @@ shinyServer(
       if(length(v$data) > 0){
         ui_tbl_selector <- showNotification("Building table selector")
         out <- tbl_data() %>%
-          transmute(Entrant = paste(`First name`, `Surname`), Reviews = Reviews) %>%
+          transmute(Entrant = paste(`First name`, `Surname`), Reviews = Reviews, Status = Status) %>%
           datatable(rownames = FALSE, selection = list(mode = "single", selected = which((tbl_data()%>%pull(id)) == isolate(v$ID))), style = "bootstrap", class = "hover")
         removeNotification(ui_tbl_selector)
         out
