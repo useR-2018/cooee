@@ -50,7 +50,7 @@ shinyServer(
                   Status = tibble(reviewer, accept) %>%
                     filter(reviewer == gs_user()$user$emailAddress) %>%
                     pull(accept) %>% 
-                    {if(length(.) == 0) NA else .}
+                    {if(length(.) == 0) "None" else .}
         ) %>%
         full_join(v$data, by = "id") %>%
         replace_na(list(Reviews = 0, Status = "None")) %>%
