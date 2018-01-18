@@ -9,3 +9,13 @@ formText <- function(...){
     map(~ p(.)) %>%
     tagList
 }
+
+fuzzyMatching <- function(pattern, dataset){
+  if(pattern == ""){
+    return(0)
+  }
+  dataset %>%
+    split(seq_len(NROW(.))) %>% 
+    map(~ as.character(.) %>% strsplit(" ") %>% unlist) %>%
+    map_dbl(~ sum(agrepl(gsub(" ", "|", pattern), .))/length(.))
+}

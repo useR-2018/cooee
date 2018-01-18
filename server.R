@@ -3,6 +3,7 @@ library(tidyverse)
 library(googlesheets)
 library(DT)
 library(jsonlite)
+library(purrr)
 
 shinyServer(
   function(input, output, session) {
@@ -55,7 +56,8 @@ shinyServer(
         ) %>%
         full_join(v$data, by = "id") %>%
         replace_na(list(Reviews = 0, Status = "None")) %>%
-        arrange(Reviews, `Surname`)
+        mutate(similarity = fuzzyMatching(input$text_match, .)) %>%
+        arrange(desc(similarity), Reviews, `Surname`)
       removeNotification(notif_tbl)
       out
     })
@@ -132,7 +134,8 @@ shinyServer(
           datatable(rownames = FALSE, 
                     selection = list(mode = "single", selected = which((tbl_data()%>%pull(id)) == isolate(v$ID))),
                     style = "bootstrap", 
-                    class = "hover")
+                    class = "hover",
+                    options = list(sDom  = '<"top">irt<"bottom">p'))
         removeNotification(ui_tbl_selector)
         out
       }

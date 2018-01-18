@@ -35,6 +35,7 @@ shinyUI(
       ),
       # uiOutput("n_entries"),
       hr(),
+      textInput("text_match", "Fuzzy text sorting"),
       DT::dataTableOutput("tbl_applicants")
     ),
     dashboardBody(
