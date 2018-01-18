@@ -125,8 +125,17 @@ shinyServer(
       if(length(v$data) > 0){
         ui_tbl_selector <- showNotification("Building table selector")
         out <- tbl_data() %>%
-          transmute(Entrant = paste(`First name`, `Surname`), Reviews = Reviews, Status = Status) %>%
-          datatable(rownames = FALSE, selection = list(mode = "single", selected = which((tbl_data()%>%pull(id)) == isolate(v$ID))), style = "bootstrap", class = "hover")
+          transmute(Entrant = paste(`First name`, `Surname`),
+                    Reviews = Reviews, 
+                    Status = paste0('<i class="fa fa-',
+                                    recode(Status, "Accept" = "check text-success", "Reject" = "times text-danger", "None" = "minus text-info"),
+                                    '"></i>')
+                    ) %>%
+          datatable(rownames = FALSE, 
+                    selection = list(mode = "single", selected = which((tbl_data()%>%pull(id)) == isolate(v$ID))),
+                    style = "bootstrap", 
+                    class = "hover",
+                    escape = FALSE)
         removeNotification(ui_tbl_selector)
         out
       }
