@@ -21,6 +21,7 @@ shinyServer(
         online = FALSE,
         lastSync = "Never",
         ID = 1,
+        email = "none",
         firstRun = TRUE
       )
     }
@@ -31,13 +32,13 @@ shinyServer(
       notif_data <- showNotification("Constructing dataset")
       out <- v$reviews %>%
         bind_rows(v$changes) %>%
-        filter(reviewer == gs_user()$user$emailAddress) %>%
+        filter(reviewer == v$email) %>%
         group_by(id) %>%
         filter(timestamp == max(timestamp)) %>%
         ungroup
       removeNotification(notif_data)
       out
-      })
+    })
     
     tbl_data <- reactive({
       notif_tbl <- showNotification("Updating table")
@@ -48,7 +49,7 @@ shinyServer(
         group_by(id) %>%
         summarise(Reviews = n(),
                   Status = tibble(reviewer, accept) %>%
-                    filter(reviewer == gs_user()$user$emailAddress) %>%
+                    filter(reviewer == v$email) %>%
                     pull(accept) %>% 
                     {if(length(.) == 0) "None" else .}
         ) %>%
@@ -94,7 +95,7 @@ shinyServer(
     })
 
     observe({
-      if(!v$firstRun & input$btn_sync == 0){
+      if(!v$firstRun & input$btn_sync == 0 & !is.null(v$email)){
         return()
       }
       if (!is.null(access_token())) {
@@ -112,6 +113,7 @@ shinyServer(
           ## Download reviews
           v$reviews <- gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=2) %>% tail(-1)
           
+          v$email <- gs_user()$user$emailAddress
           v$firstRun <- FALSE
           v$lastSync <- Sys.time()
         })
@@ -245,7 +247,7 @@ shinyServer(
           tibble(
             id = v$ID,
             timestamp = format(Sys.time(), tz="GMT"),
-            reviewer = gs_user()$user$emailAddress,
+            reviewer = v$email,
             accept = input$accept,
             comment = input$comment
           )
