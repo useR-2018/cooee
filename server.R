@@ -110,7 +110,7 @@ shinyServer(
           v$data <- gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=1) %>% mutate(id = row_number())
           
           ## Download reviews
-          v$reviews <- gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=2)
+          v$reviews <- gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=2) %>% tail(-1)
           
           v$firstRun <- FALSE
           v$lastSync <- Sys.time()
