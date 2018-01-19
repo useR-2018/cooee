@@ -35,6 +35,7 @@ shinyUI(
       ),
       # uiOutput("n_entries"),
       hr(),
+      radioButtons("show_personal", "Personal information", c("Shown", "Hidden"), inline = TRUE),
       textInput("text_match", "Fuzzy text sorting"),
       DT::dataTableOutput("tbl_applicants")
     ),

@@ -126,11 +126,19 @@ shinyServer(
     output$tbl_applicants <- DT::renderDataTable({
       if(length(v$data) > 0){
         ui_tbl_selector <- showNotification("Building table selector")
-        out <- tbl_data() %>%
-          transmute(Entrant = paste(`First name`, `Surname`),
-                    Reviews = Reviews, 
-                    Status = Status
-                    ) %>%
+        out <- {if (input$show_personal == "Shown")
+            tbl_data() %>%
+            transmute(Entrant = paste(`First name`, `Surname`),
+                      Reviews = Reviews, 
+                      Status = Status
+            )
+            else
+            tbl_data() %>% 
+              transmute(Title = `Title (of tutorial)`,
+                        Reviews = Reviews, 
+                        Status = Status
+              )
+          } %>%
           datatable(rownames = FALSE, 
                     selection = list(mode = "single", selected = which((tbl_data()%>%pull(id)) == isolate(v$ID))),
                     style = "bootstrap", 
@@ -170,14 +178,18 @@ shinyServer(
             formText("Keywords:", applicant_data$`Keywords (give us five)`),
             formText("Hands-on / Requires computer:", applicant_data$`Will the tutorial be hands-on, participants bring a computer?`)
           ),
-          box(
-            title = "Personal information",
-            formText(applicant_data$`First name`, applicant_data$Surname),
-            formText("Affiliation:", applicant_data$Affiliation),
-            formText("Gender:", applicant_data$Gender),
-            formText("Education:", applicant_data$Education),
-            formText("Age:", applicant_data$Age)
-          ),
+          {if(input$show_personal == "Shown") 
+            box(
+              title = "Personal information",
+              formText(applicant_data$`First name`, applicant_data$Surname),
+              formText("Affiliation:", applicant_data$Affiliation),
+              formText("Gender:", applicant_data$Gender),
+              formText("Education:", applicant_data$Education),
+              formText("Age:", applicant_data$Age)
+            )
+            else
+              div(style = "display:none;")
+          },
           box(
             title = "Equipment",
             formText(applicant_data$`Equipment (what do you and participants need)`)
