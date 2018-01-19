@@ -49,6 +49,7 @@ shinyServer(
         filter(timestamp == max(timestamp)) %>%
         group_by(id) %>%
         summarise(Reviews = n(),
+                  Rejects = sum(accept == "Reject"),
                   Status = tibble(reviewer, accept) %>%
                     filter(reviewer == v$email) %>%
                     pull(accept) %>% 
@@ -58,6 +59,11 @@ shinyServer(
         replace_na(list(Reviews = 0, Status = "None")) %>%
         mutate(similarity = fuzzyMatching(input$text_match, .)) %>%
         arrange(desc(similarity), Reviews, `Surname`)
+      
+      if(input$filter_rejections == "On"){
+        out <- out %>%
+          filter(Rejects < 2)
+      }
       removeNotification(notif_tbl)
       out
     })

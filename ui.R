@@ -35,7 +35,10 @@ shinyUI(
       ),
       # uiOutput("n_entries"),
       hr(),
-      radioButtons("show_personal", "Personal information", c("Shown", "Hidden"), inline = TRUE),
+      fluidRow(
+        column(6, radioButtons("show_personal", "Personal information", c("Shown", "Hidden"), inline = TRUE)),
+        column(6, radioButtons("filter_rejections", "Rejection filter", c("On", "Off"), inline = TRUE))
+      ),
       textInput("text_match", "Fuzzy text sorting"),
       DT::dataTableOutput("tbl_applicants")
     ),
