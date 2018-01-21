@@ -12,7 +12,8 @@ shinyUI(
       width = "450px",
       uiOutput("auth"),
       uiOutput("sync"),
-      radioButtons("net_mode", "Operation Mode", c("Online", "Offline"), inline = TRUE),
+      radioButtons("net_mode", "Net Mode", c("Online", "Offline"), inline = TRUE),
+      radioButtons("admin_mode", "Operation Mode", c("Reviewer", "Administrator"), inline = TRUE),
       sidebarMenu(
         tags$li(
           actionLink("btn_debug",
@@ -47,7 +48,8 @@ shinyUI(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
       ),
       uiOutput("abstract"),
-      uiOutput("review")
+      uiOutput("review"),
+      uiOutput("feedback")
     )
   )
 )

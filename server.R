@@ -50,10 +50,15 @@ shinyServer(
         group_by(id) %>%
         summarise(Reviews = n(),
                   Rejects = sum(accept == "Reject"),
-                  Status = tibble(reviewer, accept) %>%
-                    filter(reviewer == v$email) %>%
-                    pull(accept) %>% 
-                    {if(length(.) == 0) "None" else .}
+                  Status = {if(input$admin_mode == "Reviewer") 
+                              tibble(reviewer, accept) %>%
+                              filter(reviewer == v$email) %>%
+                              pull(accept) %>% 
+                              {if(length(.) == 0) "None" else .}
+                            else
+                              tibble(reviewer, accept) %>%
+                              pull(accept) %>% 
+                              {if(length(.) == 0) "None" else sum(. == "Accept")-sum(. == "Reject")}}
         ) %>%
         full_join(v$data, by = "id") %>%
         replace_na(list(Reviews = 0, Status = "None")) %>%
@@ -219,7 +224,7 @@ shinyServer(
       
       
       output$review <- renderUI({
-        if(is.null(input$tbl_applicants_rows_selected)){
+        if(is.null(input$tbl_applicants_rows_selected) | input$admin_mode == "Administrator"){
           return()
         }
         review_data <- latest_reviews() %>%
@@ -261,11 +266,34 @@ shinyServer(
           )
         )
       })
-    })
-  
-    
-    observeEvent(input$btn_debug, {
-      browser()
+      
+      
+      output$feedback <- renderUI({
+        if(is.null(input$tbl_applicants_rows_selected) | input$admin_mode == "Reviewer"){
+          return()
+        }
+        
+        review_data <- v$reviews %>%
+          bind_rows(v$changes) %>%
+          group_by(id, reviewer) %>%
+          filter(timestamp == max(timestamp)) %>%
+          ungroup %>%
+          filter(id == v$ID)
+        
+        print(review_data)
+        
+        review_data %>%
+          split(seq_len(NROW(.))) %>% 
+          map(~ box(width = 6,
+                    title = .$reviewer,
+                    background = switch(.$accept,
+                                          Undecided = "aqua",
+                                          Accept = "green",
+                                          Reject = "red"),
+                    .$comment)) %>%
+          do.call("tagList", .) %>%
+          fluidRow()
+      })
     })
     
     observeEvent(input$save, {
@@ -289,9 +317,23 @@ shinyServer(
       }
     })
     
-    # session$onFlushed(function(){
-    #   updater$resume()
-    # }, once = TRUE)
+    output$ui_save <- renderUI({
+      actionLink(
+        "save",
+        box(
+          p("Save", style="text-align: center;"),
+          width = NULL,
+          background = switch(input$accept,
+                              Undecided = "aqua",
+                              Accept = "green",
+                              Reject = "red")
+        )
+      )
+    })
+
+    observeEvent(input$btn_debug, {
+      browser()
+    })
     
     onStop(function(){
       save(v, file = "cache.Rdata")
