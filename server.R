@@ -58,7 +58,7 @@ shinyServer(
                             else
                               tibble(reviewer, accept) %>%
                               pull(accept) %>% 
-                              {if(length(.) == 0) "None" else sum(. == "Accept")-sum(. == "Reject")}}
+                              {if(length(.) == 0) "None" else round(mean(recode(., "Accept" = 1, "Undecided" = 0, "Reject" = -1)), 2)}}
         ) %>%
         full_join(v$data, by = "id") %>%
         replace_na(list(Reviews = 0, Status = "None")) %>%
