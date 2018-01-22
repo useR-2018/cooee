@@ -317,20 +317,6 @@ shinyServer(
       }
     })
     
-    output$ui_save <- renderUI({
-      actionLink(
-        "save",
-        box(
-          p("Save", style="text-align: center;"),
-          width = NULL,
-          background = switch(input$accept,
-                              Undecided = "aqua",
-                              Accept = "green",
-                              Reject = "red")
-        )
-      )
-    })
-
     observeEvent(input$btn_debug, {
       browser()
     })
