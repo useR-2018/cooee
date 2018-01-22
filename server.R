@@ -58,7 +58,7 @@ shinyServer(
                             else
                               tibble(reviewer, accept) %>%
                               pull(accept) %>% 
-                              {if(length(.) == 0) "None" else round(mean(recode(., "Accept" = 1, "Undecided" = 0, "Reject" = -1)), 2)}}
+                              {if(length(.) == 0) "None" else round(mean(recode(., "Bloody ripper" = 2, "Beaut" = 1, "Okey-dokey" = 0, "Sorry" = -1)), 2)}}
         ) %>%
         full_join(v$data, by = "id") %>%
         replace_na(list(Reviews = 0, Status = "None", Rejects = 0)) %>%
@@ -198,8 +198,8 @@ shinyServer(
             column(2,
                    radioButtons("accept", 
                                 label = "Decision", 
-                                choices = c("1", "2", "3", "4"), 
-                                selected = ifelse(length(review_data %>% pull(accept))==1, review_data %>% pull(accept), "3")
+                                choices = c("Bloody ripper", "Beaut", "Okey-dokey", "Sorry"), 
+                                selected = ifelse(length(review_data %>% pull(accept))==1, review_data %>% pull(accept), "Okey-dokey")
                    ),
                    uiOutput("ui_save")
             ),
@@ -221,9 +221,10 @@ shinyServer(
             p("Save", style="text-align: center;"),
             width = NULL,
             background = switch(input$accept,
-                                Accept = "green",
-                                Undecided = "aqua",
-                                Reject = "red")
+                                `Bloody ripper` = "green",
+                                Beaut = "light-blue",
+                                `Okey-dokey` = "orange",
+                                Sorry = "red")
           )
         )
       })
@@ -247,10 +248,11 @@ shinyServer(
           split(seq_len(NROW(.))) %>% 
           map(~ box(width = 6,
                     title = .$reviewer,
-                    background = switch(.$accept,
-                                          Accept = "green",
-                                          Undecided = "aqua",
-                                          Reject = "red"),
+                    background = switch(input$accept,
+                                        `Bloody ripper` = "green",
+                                        Beaut = "light-blue",
+                                        `Okey-dokey` = "orange",
+                                        Sorry = "red"),
                     .$comment)) %>%
           do.call("tagList", .) %>%
           fluidRow()
@@ -278,19 +280,6 @@ shinyServer(
       }
     })
     
-    output$ui_save <- renderUI({
-      actionLink(
-        "save",
-        box(
-          p("Save", style="text-align: center;"),
-          width = NULL,
-          background = switch(input$accept,
-                              Undecided = "aqua",
-                              Accept = "green",
-                              Reject = "red")
-        )
-      )
-    })
 
     observeEvent(input$btn_debug, {
       browser()
