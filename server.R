@@ -61,9 +61,9 @@ shinyServer(
                               {if(length(.) == 0) "None" else round(mean(recode(., "Accept" = 1, "Undecided" = 0, "Reject" = -1)), 2)}}
         ) %>%
         full_join(v$data, by = "id") %>%
-        replace_na(list(Reviews = 0, Status = "None")) %>%
+        replace_na(list(Reviews = 0, Status = "None", Rejects = 0)) %>%
         mutate(similarity = fuzzyMatching(input$text_match, .)) %>%
-        arrange(desc(similarity), Reviews, `Surname`)
+        arrange(desc(similarity), Reviews)
       
       if(input$filter_rejections == "On"){
         out <- out %>%
@@ -116,15 +116,15 @@ shinyServer(
         isolate({
           ## Upload changes
           if(NROW(v$changes) > 0){
-            gs_add_row(gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ"), ws = 2, input = v$changes)
+            gs_add_row(gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8"), ws = 2, input = v$changes)
             v$changes <- list()
           }
           
           ## Download data
-          v$data <- gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=1) %>% mutate(id = row_number())
+          v$data <- gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8") %>% gs_read_csv(ws=1) %>% mutate(id = row_number())
           
           ## Download reviews
-          v$reviews <- gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ") %>% gs_read_csv(ws=2) %>% tail(-1)
+          v$reviews <- gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8") %>% gs_read_csv(ws=2) %>% tail(-1)
           
           v$email <- gs_user()$user$emailAddress
           v$firstRun <- FALSE
@@ -137,19 +137,11 @@ shinyServer(
     output$tbl_applicants <- DT::renderDataTable({
       if(length(v$data) > 0){
         ui_tbl_selector <- showNotification("Building table selector")
-        out <- {if (input$show_personal == "Shown")
-            tbl_data() %>%
-            transmute(Entrant = paste(`First name`, `Surname`),
-                      Reviews = Reviews, 
-                      Status = Status
-            )
-            else
-            tbl_data() %>% 
-              transmute(Title = `Title (of tutorial)`,
+        out <- tbl_data() %>% 
+              transmute(Title = `Title of presentation`,
                         Reviews = Reviews, 
                         Status = Status
-              )
-          } %>%
+              ) %>%
           datatable(rownames = FALSE, 
                     selection = list(mode = "single", selected = which((tbl_data()%>%pull(id)) == isolate(v$ID))),
                     style = "bootstrap", 
@@ -181,44 +173,13 @@ shinyServer(
         }
         applicant_data <- tbl_data() %>%
           filter(id == v$ID)
-        tagList(
-          box(
-            title = applicant_data$`Title (of tutorial)`,
-            formText(applicant_data$`Outline (provide a paragraph with topics to be covered and rough timing)`),
-            hr(),
-            formText("Keywords:", applicant_data$`Keywords (give us five)`),
-            formText("Hands-on / Requires computer:", applicant_data$`Will the tutorial be hands-on, participants bring a computer?`)
-          ),
-          {if(input$show_personal == "Shown") 
-            box(
-              title = "Personal information",
-              formText(applicant_data$`First name`, applicant_data$Surname),
-              formText("Affiliation:", applicant_data$Affiliation),
-              formText("Gender:", applicant_data$Gender),
-              formText("Education:", applicant_data$Education),
-              formText("Age:", applicant_data$Age)
-            )
-            else
-              div(style = "display:none;")
-          },
-          box(
-            title = "Equipment",
-            formText(applicant_data$`Equipment (what do you and participants need)`)
-          ),
-          box(
-            title = "Participants",
-            formText("R background:", applicant_data$`R background of participants`),
-            formText("Other background:",applicant_data$`Other background needed`),
-            formText("Target audience:", applicant_data$`Target audience`)
-          ),
-          box(
-            title = "Motivation",
-            formText(applicant_data$`Motivation (why do you think this would be a good tutorial for participants of useR! 2018)`)
-          ),
-          box(
-            title = "Other information",
-            formText(applicant_data$`Anything else you would like to tell us`)
-          )
+        box(
+          width = 12,
+          title = applicant_data$`Title of presentation`,
+          formText(applicant_data$`Abstract (text only, 1200 characters)`),
+          hr(),
+          formText("Keywords:", applicant_data$`Keywords (pick at least one)`),
+          formText("Format(s):", applicant_data$`Preferred format (choose 1, or more if you have no preference)`)
         )
       })
       
@@ -237,8 +198,8 @@ shinyServer(
             column(2,
                    radioButtons("accept", 
                                 label = "Decision", 
-                                choices = c("Undecided", "Accept", "Reject"), 
-                                selected = ifelse(length(review_data %>% pull(accept))==1, review_data %>% pull(accept), "Undecided")
+                                choices = c("1", "2", "3", "4"), 
+                                selected = ifelse(length(review_data %>% pull(accept))==1, review_data %>% pull(accept), "3")
                    ),
                    uiOutput("ui_save")
             ),
@@ -260,8 +221,8 @@ shinyServer(
             p("Save", style="text-align: center;"),
             width = NULL,
             background = switch(input$accept,
-                                Undecided = "aqua",
                                 Accept = "green",
+                                Undecided = "aqua",
                                 Reject = "red")
           )
         )
@@ -287,8 +248,8 @@ shinyServer(
           map(~ box(width = 6,
                     title = .$reviewer,
                     background = switch(.$accept,
-                                          Undecided = "aqua",
                                           Accept = "green",
+                                          Undecided = "aqua",
                                           Reject = "red"),
                     .$comment)) %>%
           do.call("tagList", .) %>%
@@ -309,7 +270,7 @@ shinyServer(
         )
       if(input$net_mode == "Online"){
         notif_save <- showNotification("Uploading review.")
-        gs_add_row(gs_key("1Jjq70cLXfMZj5mXwau_Zhbw-N0d34nrw3qGvoeL4DdQ"), ws = 2, input = v$changes)
+        gs_add_row(gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8"), ws = 2, input = v$changes)
         removeNotification(notif_save)
         v$reviews <- v$reviews %>%
           bind_rows(v$changes)

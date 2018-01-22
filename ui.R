@@ -5,7 +5,7 @@ library(googlesheets)
 shinyUI(
   dashboardPage(
     dashboardHeader(
-      title = "useR 2018 Application Review",
+      title = "useR 2018 Abstract Review",
       titleWidth = "450px"
     ),
     dashboardSidebar(
@@ -37,7 +37,6 @@ shinyUI(
       # uiOutput("n_entries"),
       hr(),
       fluidRow(
-        column(6, radioButtons("show_personal", "Personal information", c("Shown", "Hidden"), inline = TRUE)),
         column(6, radioButtons("filter_rejections", "Rejection filter", c("On", "Off"), inline = TRUE))
       ),
       textInput("text_match", "Fuzzy text sorting"),
