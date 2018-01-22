@@ -9,9 +9,9 @@ shinyServer(
   function(input, output, session) {
     source("helpers.R")
     
-    if("cache.Rdata" %in% list.files()){
+    if("cache_abstracts.Rdata" %in% list.files()){
       notif_cache <- showNotification("Loading cache")
-      load("cache.Rdata")
+      load("cache_abstracts.Rdata")
       removeNotification(notif_cache)
     }
     else{
@@ -297,7 +297,7 @@ shinyServer(
     })
     
     onStop(function(){
-      save(v, file = "cache.Rdata")
+      save(v, file = "cache_abstracts.Rdata")
     })
     
     removeNotification(notif_ui)
