@@ -61,7 +61,7 @@ shinyServer(
                               {if(length(.) == 0) "None" else round(mean(recode(., "Accept" = 1, "Undecided" = 0, "Reject" = -1)), 2)}}
         ) %>%
         full_join(v$data, by = "id") %>%
-        replace_na(list(Reviews = 0, Status = "None")) %>%
+        replace_na(list(Reviews = 0, Status = "None", Rejects = 0)) %>%
         mutate(similarity = fuzzyMatching(input$text_match, .)) %>%
         arrange(desc(similarity), Reviews, `Surname`)
       
