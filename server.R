@@ -58,10 +58,12 @@ shinyServer(
                             else
                               tibble(reviewer, accept) %>%
                               pull(accept) %>% 
-                              {if(length(.) == 0) "None" else round(mean(recode(., "Accept" = 1, "Undecided" = 0, "Reject" = -1)), 2)}}
+                              {if(length(.) == 0) "None" else round(mean(recode(., "Accept" = 1, "Undecided" = 0, "Reject" = -1)), 2)} %>%
+                              as.numeric
+                            }
         ) %>%
         full_join(v$data, by = "id") %>%
-        replace_na(list(Reviews = 0, Status = "None", Rejects = 0)) %>%
+        replace_na(list(Reviews = 0, Status = ifelse(input$admin_mode == "Reviewer", "None", 0), Rejects = 0)) %>%
         mutate(similarity = fuzzyMatching(input$text_match, .)) %>%
         arrange(desc(similarity), Reviews, `Surname`)
       
