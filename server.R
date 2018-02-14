@@ -9,9 +9,9 @@ shinyServer(
   function(input, output, session) {
     source("helpers.R")
     
-    if("cache_abstracts.Rdata" %in% list.files()){
+    if("cache_scholarships.Rdata" %in% list.files()){
       notif_cache <- showNotification("Loading cache")
-      load("cache_abstracts.Rdata")
+      load("cache_scholarships.Rdata")
       removeNotification(notif_cache)
     }
     else{
@@ -58,7 +58,7 @@ shinyServer(
                             else
                               tibble(reviewer, accept) %>%
                               pull(accept) %>% 
-                              {if(length(.) == 0) "None" else round(mean(recode(., "Bloody ripper" = 2, "Beaut" = 1, "Okey-dokey" = 0, "Sorry" = -1)), 2)} %>%
+                              {if(length(.) == 0) "None" else round(mean(recode(., "Yes" = 1, "Maybe" = 0, "No" = -1)), 2)} %>%
                               as.numeric
                             }
         ) %>%
@@ -118,15 +118,15 @@ shinyServer(
         isolate({
           ## Upload changes
           if(NROW(v$changes) > 0){
-            gs_add_row(gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8"), ws = 2, input = v$changes)
+            gs_add_row(gs_key("1YtukfSlAy56hjrMSFGNGnbQbT1WsQ5NBV0_etfRj_xQ"), ws = 2, input = v$changes)
             v$changes <- list()
           }
           
           ## Download data
-          v$data <- gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8") %>% gs_read_csv(ws=1) %>% mutate(id = row_number())
+          v$data <- gs_key("1YtukfSlAy56hjrMSFGNGnbQbT1WsQ5NBV0_etfRj_xQ") %>% gs_read_csv(ws=1) %>% mutate(id = row_number())
           
           ## Download reviews
-          v$reviews <- gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8") %>% gs_read_csv(ws=2) %>% tail(-1)
+          v$reviews <- gs_key("1YtukfSlAy56hjrMSFGNGnbQbT1WsQ5NBV0_etfRj_xQ") %>% gs_read_csv(ws=2) %>% tail(-1)
           
           v$email <- gs_user()$user$emailAddress
           v$firstRun <- FALSE
@@ -140,7 +140,7 @@ shinyServer(
       if(length(v$data) > 0){
         ui_tbl_selector <- showNotification("Building table selector")
         out <- tbl_data() %>% 
-              transmute(Title = `Title of presentation`,
+              transmute(Name = Name,
                         Reviews = Reviews, 
                         Status = Status
               ) %>%
@@ -175,13 +175,29 @@ shinyServer(
         }
         applicant_data <- tbl_data() %>%
           filter(id == v$ID)
-        box(
-          width = 12,
-          title = applicant_data$`Title of presentation`,
-          formText(applicant_data$`Abstract (text only, 1200 characters)`),
-          hr(),
-          formText("Keywords:", applicant_data$`Keywords (pick at least one)`),
-          formText("Format(s):", applicant_data$`Preferred format (choose 1, or more if you have no preference)`)
+        tagList(
+          box(
+            width = 6,
+            title = "Tell us a little about yourself, especially about your R and open source or open data activities.",
+            formText(applicant_data$`Tell us a little about yourself, especially about your R and open source or open data activities.`)
+          ),
+          box(
+            width = 6,
+            title = "Why are you applying for a scholarship?",
+            formText(applicant_data$`Why are you applying for a scholarship?`)
+          ),
+          box(
+            width = 6,
+            title = "Tell us why attending useR! would help you, and impact the community",
+            formText(applicant_data$`Tell us why attending useR! would help you, and impact the community`)
+          ),
+          box(
+            width = 6,
+            title = applicant_data$`Name`,
+            formText("Disadvantaged:", applicant_data$`Do you identify with an under-represented,  minority, socially or geographically disadvantaged group? Provide some details.`),
+            formText("Travel:", applicant_data$`Where would you be traveling from and to?`),
+            formText("R Ladies:", applicant_data$`I would like to be considered for an R Ladies Australia scholarship`)
+          )
         )
       })
       
@@ -200,8 +216,8 @@ shinyServer(
             column(2,
                    radioButtons("accept", 
                                 label = "Decision", 
-                                choices = c("Bloody ripper", "Beaut", "Okey-dokey", "Sorry"), 
-                                selected = ifelse(length(review_data %>% pull(accept))==1, review_data %>% pull(accept), "Okey-dokey")
+                                choices = c("Yes", "Maybe", "No"), 
+                                selected = ifelse(length(review_data %>% pull(accept))==1, review_data %>% pull(accept), "Maybe")
                    ),
                    uiOutput("ui_save")
             ),
@@ -223,10 +239,9 @@ shinyServer(
             p("Save", style="text-align: center;"),
             width = NULL,
             background = switch(input$accept,
-                                `Bloody ripper` = "green",
-                                Beaut = "light-blue",
-                                `Okey-dokey` = "orange",
-                                Sorry = "red")
+                                Yes = "green",
+                                Maybe = "light-blue",
+                                No = "red")
           )
         )
       })
@@ -251,10 +266,9 @@ shinyServer(
           map(~ box(width = 6,
                     title = .$reviewer,
                     background = switch(input$accept,
-                                        `Bloody ripper` = "green",
-                                        Beaut = "light-blue",
-                                        `Okey-dokey` = "orange",
-                                        Sorry = "red"),
+                                        Yes = "green",
+                                        Maybe = "light-blue",
+                                        No = "red"),
                     .$comment)) %>%
           do.call("tagList", .) %>%
           fluidRow()
@@ -274,7 +288,7 @@ shinyServer(
         )
       if(input$net_mode == "Online"){
         notif_save <- showNotification("Uploading review.")
-        gs_add_row(gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8"), ws = 2, input = v$changes)
+        gs_add_row(gs_key("1YtukfSlAy56hjrMSFGNGnbQbT1WsQ5NBV0_etfRj_xQ"), ws = 2, input = v$changes)
         removeNotification(notif_save)
         v$reviews <- v$reviews %>%
           bind_rows(v$changes)
@@ -288,7 +302,7 @@ shinyServer(
     })
     
     onStop(function(){
-      save(v, file = "cache_abstracts.Rdata")
+      save(v, file = "cache_scholarships.Rdata")
     })
     
     removeNotification(notif_ui)
