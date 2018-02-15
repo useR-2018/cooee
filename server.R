@@ -49,7 +49,7 @@ shinyServer(
         filter(timestamp == max(timestamp)) %>%
         group_by(id) %>%
         summarise(Reviews = n(),
-                  Rejects = sum(accept == "Reject"),
+                  Rejects = sum(accept == "Sorry"),
                   Status = {if(input$admin_mode == "Reviewer") 
                               tibble(reviewer, accept) %>%
                               filter(reviewer == v$email) %>%
