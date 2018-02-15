@@ -250,12 +250,12 @@ shinyServer(
           split(seq_len(NROW(.))) %>% 
           map(~ box(width = 6,
                     title = .$reviewer,
-                    background = switch(input$accept,
+                    background = switch(.$accept,
                                         `Bloody ripper` = "green",
                                         Beaut = "light-blue",
                                         `Okey-dokey` = "orange",
                                         Sorry = "red"),
-                    .$comment)) %>%
+                    formText(.$accept, ": ", .$comment)))%>%
           do.call("tagList", .) %>%
           fluidRow()
       })
