@@ -37,7 +37,7 @@ shinyUI(
       # uiOutput("n_entries"),
       hr(),
       fluidRow(
-        column(6, radioButtons("filter_rejections", "Rejection filter", c("On", "Off"), inline = TRUE))
+        column(6, radioButtons("filter_decisions", "Decision filter", c("On", "Off"), inline = TRUE))
       ),
       textInput("text_match", "Fuzzy text sorting"),
       DT::dataTableOutput("tbl_applicants")
@@ -47,8 +47,8 @@ shinyUI(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
       ),
       uiOutput("abstract"),
-      uiOutput("review"),
-      uiOutput("feedback")
+      uiOutput("feedback"),
+      uiOutput("review")
     )
   )
 )

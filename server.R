@@ -16,9 +16,10 @@ shinyServer(
     }
     else{
       v <- reactiveValues(
-        reviews = list(),
         data = list(),
-        changes = list(),
+        reviews = list(),
+        decisions = list(),
+        changes = list(reviews = list(), decisions = list()),
         online = FALSE,
         lastSync = "Never",
         ID = 1,
@@ -27,12 +28,21 @@ shinyServer(
       )
     }
     
+    # Update old caches for new structure
+    observe({
+      if(is.null(v$decisions)){
+        v$decisions <- list()
+        v$changes <- list(reviews = v$changes, decisions = list())
+        v$firstRun <- TRUE
+      }
+    })
+    
     notif_ui <- showNotification("Building UI")
     
     latest_reviews <- reactive({
       notif_data <- showNotification("Constructing dataset")
       out <- v$reviews %>%
-        bind_rows(v$changes) %>%
+        bind_rows(v$changes$reviews) %>%
         filter(reviewer == v$email) %>%
         group_by(id) %>%
         filter(timestamp == max(timestamp)) %>%
@@ -44,7 +54,7 @@ shinyServer(
     tbl_data <- reactive({
       notif_tbl <- showNotification("Updating table")
       out <- v$reviews %>%
-        bind_rows(v$changes) %>%
+        bind_rows(v$changes$reviews) %>%
         group_by(id, reviewer) %>%
         filter(timestamp == max(timestamp)) %>%
         group_by(id) %>%
@@ -67,13 +77,31 @@ shinyServer(
         mutate(similarity = fuzzyMatching(input$text_match, .)) %>%
         arrange(desc(similarity), Reviews)
       
-      if(input$filter_rejections == "On"){
+      if(input$filter_decisions == "On"){
         out <- out %>%
-          filter(Rejects < 2)
+          anti_join(v$decisions %>%
+                      bind_rows(v$changes$decisions) %>%
+                      bind_rows(tibble(id = integer())), # Make sure that there exists an id variable
+                    by = "id"
+          )
       }
       removeNotification(notif_tbl)
       out
     })
+    
+    uploadChanges <- function(changes){
+      notif_save <- showNotification("Uploading review.")
+      if(NROW(changes$reviews) > 0){
+        gs_add_row(gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8"), ws = 2, input = changes$reviews)
+        changes$reviews <- list()
+      }
+      if(NROW(changes$decisions) > 0){
+        gs_add_row(gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8"), ws = 3, input = changes$decisions)
+        changes$decisions <- list()
+      }
+      removeNotification(notif_save)
+      return(changes)
+    }
     
     output$auth <- renderUI({
       if (is.null(isolate(access_token()))) {
@@ -117,16 +145,16 @@ shinyServer(
         notif_sync <- showNotification("Synchronising... Please wait", duration = NULL)
         isolate({
           ## Upload changes
-          if(NROW(v$changes) > 0){
-            gs_add_row(gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8"), ws = 2, input = v$changes)
-            v$changes <- list()
-          }
+          uploadChanges(v$changes)
           
           ## Download data
           v$data <- gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8") %>% gs_read_csv(ws=1) %>% mutate(id = row_number())
           
           ## Download reviews
           v$reviews <- gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8") %>% gs_read_csv(ws=2) %>% tail(-1)
+          
+          ## Download decisions
+          v$decisions <- gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8") %>% gs_read_csv(ws=3) %>% tail(-1)
           
           v$email <- gs_user()$user$emailAddress
           v$firstRun <- FALSE
@@ -187,16 +215,16 @@ shinyServer(
       
       
       output$review <- renderUI({
-        if(is.null(input$tbl_applicants_rows_selected) | input$admin_mode == "Administrator"){
+        if(is.null(input$tbl_applicants_rows_selected)){
           return()
         }
         review_data <- latest_reviews() %>%
           filter(id == v$ID)
         print(review_data)
         box(width = 12,
-            title = "Evaluation",
+            title = ifelse(input$admin_mode == "Administrator", "Decision", "Review"),
             solidHeader = TRUE,
-            status = "info", #ifelse(length(curInputs$accept)==0, "info", ifelse(any(curInputs$accept=="Accept"), "success", "danger")),
+            status = "info",
             column(2,
                    radioButtons("accept", 
                                 label = "Decision", 
@@ -238,7 +266,7 @@ shinyServer(
         }
         
         review_data <- v$reviews %>%
-          bind_rows(v$changes) %>%
+          bind_rows(v$changes$reviews) %>%
           group_by(id, reviewer) %>%
           filter(timestamp == max(timestamp)) %>%
           ungroup %>%
@@ -262,23 +290,36 @@ shinyServer(
     })
     
     observeEvent(input$save, {
-      v$changes <- v$changes %>%
-        bind_rows(
-          tibble(
-            id = v$ID,
-            timestamp = format(Sys.time(), tz="GMT"),
-            reviewer = v$email,
-            accept = input$accept,
-            comment = input$comment
+      if(input$admin_mode == "Administrator"){
+        v$changes$decisions <- v$changes$decisions %>%
+          bind_rows(
+            tibble(
+              id = v$ID,
+              timestamp = format(Sys.time(), tz="GMT"),
+              reviewer = v$email,
+              accept = input$accept,
+              comment = input$comment
+            )
           )
-        )
+      }
+      else{
+        v$changes$reviews <- v$changes$reviews %>%
+          bind_rows(
+            tibble(
+              id = v$ID,
+              timestamp = format(Sys.time(), tz="GMT"),
+              reviewer = v$email,
+              accept = input$accept,
+              comment = input$comment
+            )
+          )
+      }
       if(input$net_mode == "Online"){
-        notif_save <- showNotification("Uploading review.")
-        gs_add_row(gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8"), ws = 2, input = v$changes)
-        removeNotification(notif_save)
         v$reviews <- v$reviews %>%
-          bind_rows(v$changes)
-        v$changes <- list()
+          bind_rows(v$changes$reviews)
+        v$decisions <- v$decisions %>%
+          bind_rows(v$changes$decisions)
+        v$changes <- uploadChanges(v$changes)
       }
     })
     
