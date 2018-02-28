@@ -163,15 +163,22 @@ shinyServer(
         removeNotification(notif_sync)
       }
     })
+    
+    observe({
+      dt <- tbl_data()
+      updateSliderInput(session, "slider_reviews", min = min(dt$Reviews), max = max(dt$Reviews))
+    })
 
     output$tbl_applicants <- DT::renderDataTable({
       if(length(v$data) > 0){
         ui_tbl_selector <- showNotification("Building table selector")
+        
         out <- tbl_data() %>% 
-              transmute(Title = `Title of presentation`,
-                        Reviews = Reviews, 
-                        Status = Status
-              ) %>%
+          transmute(Title = `Title of presentation`,
+                    Reviews = Reviews, 
+                    Status = Status
+          ) %>%
+          filter(between(Reviews, input$slider_reviews[1], input$slider_reviews[2])) %>% 
           datatable(rownames = FALSE, 
                     selection = list(mode = "single", selected = which((tbl_data()%>%pull(id)) == isolate(v$ID))),
                     style = "bootstrap", 
@@ -242,7 +249,6 @@ shinyServer(
             )
         )
       })
-      
       
       output$ui_save <- renderUI({
         actionLink(
