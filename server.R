@@ -42,6 +42,7 @@ shinyServer(
     latest_reviews <- reactive({
       notif_data <- showNotification("Constructing dataset")
       out <- v$reviews %>%
+        as_tibble %>%
         bind_rows(v$changes$reviews) %>%
         filter(reviewer == v$email) %>%
         group_by(id) %>%
@@ -50,6 +51,19 @@ shinyServer(
       removeNotification(notif_data)
       out
     })
+    
+    latest_decisions <- reactive({
+      notif_data <- showNotification("Constructing dataset")
+      out <- v$decisions %>%
+        as_tibble %>%
+        bind_rows(v$changes$decisions) %>%
+        group_by(id) %>%
+        filter(timestamp == max(timestamp)) %>%
+        ungroup
+      removeNotification(notif_data)
+      out
+    })
+    
     
     tbl_data <- reactive({
       notif_tbl <- showNotification("Updating table")
@@ -77,6 +91,22 @@ shinyServer(
         mutate(similarity = fuzzyMatching(input$text_match, .)) %>%
         arrange(desc(similarity), Reviews)
       
+      if(input$filter_decisions == "On"){
+        out <- out %>%
+          anti_join(v$decisions %>%
+                      bind_rows(v$changes$decisions) %>%
+                      bind_rows(tibble(id = integer())), # Make sure that there exists an id variable
+                    by = "id"
+          )
+      }
+      removeNotification(notif_tbl)
+      out
+    })
+    
+    tbl_filtered_data <- reactive({
+      notif_tbl <- showNotification("Filtering table")
+      out <- tbl_data() %>% 
+        filter(between(Reviews, input$slider_reviews[1], input$slider_reviews[2]))
       if(input$filter_decisions == "On"){
         out <- out %>%
           anti_join(v$decisions %>%
@@ -175,14 +205,13 @@ shinyServer(
       if(length(v$data) > 0){
         ui_tbl_selector <- showNotification("Building table selector")
         
-        out <- tbl_data() %>% 
+        out <- tbl_filtered_data() %>% 
           transmute(Title = `Title of presentation`,
                     Reviews = Reviews, 
                     Status = Status
           ) %>%
-          filter(between(Reviews, input$slider_reviews[1], input$slider_reviews[2])) %>% 
           datatable(rownames = FALSE, 
-                    selection = list(mode = "single", selected = which((tbl_data()%>%pull(id)) == isolate(v$ID))),
+                    selection = list(mode = "single", selected = which((tbl_filtered_data()%>%pull(id)) == isolate(v$ID))),
                     style = "bootstrap", 
                     class = "hover",
                     options = list(sDom  = '<"top">irt<"bottom">p'))
@@ -196,11 +225,11 @@ shinyServer(
     
     observeEvent(input$tbl_applicants_rows_selected,{
       # Update
-      v$ID <- tbl_data() %>% 
+      v$ID <- tbl_filtered_data() %>% 
         filter(row_number() == input$tbl_applicants_rows_selected) %>%
         pull(id)
       
-      print(tbl_data() %>% 
+      print(tbl_filtered_data() %>% 
               filter(row_number() == input$tbl_applicants_rows_selected))
         
       output$abstract <- renderUI({
@@ -210,7 +239,7 @@ shinyServer(
                 width = 12)
           )
         }
-        applicant_data <- tbl_data() %>%
+        applicant_data <- tbl_filtered_data() %>%
           filter(id == v$ID)
         box(
           width = 12,
@@ -227,8 +256,8 @@ shinyServer(
         if(is.null(input$tbl_applicants_rows_selected)){
           return()
         }
-        review_data <- latest_reviews() %>%
-          filter(id == v$ID)
+        review_data <- if(input$admin_mode == "Administrator") latest_decisions() else latest_reviews()
+        review_data <- review_data %>% filter(id == v$ID)
         print(review_data)
         box(width = 12,
             title = ifelse(input$admin_mode == "Administrator", "Decision", "Review"),
@@ -275,14 +304,19 @@ shinyServer(
         
         review_data <- v$reviews %>%
           bind_rows(v$changes$reviews) %>%
-          group_by(id, reviewer) %>%
+          filter(id == v$ID) %>%
+          group_by(reviewer) %>%
           filter(timestamp == max(timestamp)) %>%
-          ungroup %>%
-          filter(id == v$ID)
+          ungroup
         
-        print(review_data)
+        decision_data <- v$decisions %>%
+          bind_rows(v$changes$decisions) %>%
+          filter(id == v$ID) %>%
+          filter(timestamp == max(timestamp)) %>%
+          mutate(reviewer = "Decision")
         
-        review_data %>%
+        decision_data %>%
+          bind_rows(review_data) %>%
           split(seq_len(NROW(.))) %>% 
           map(~ box(width = 6,
                     title = .$reviewer,
