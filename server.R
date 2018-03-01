@@ -165,8 +165,10 @@ shinyServer(
     })
     
     observe({
-      dt <- tbl_data()
-      updateSliderInput(session, "slider_reviews", min = min(dt$Reviews), max = max(dt$Reviews))
+      if(length(v$reviews) > 0){
+        dt <- tbl_data()
+        updateSliderInput(session, "slider_reviews", min = min(dt$Reviews), max = max(dt$Reviews))
+      }
     })
 
     output$tbl_applicants <- DT::renderDataTable({
