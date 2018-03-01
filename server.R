@@ -86,19 +86,15 @@ shinyServer(
                               as.numeric
                             }
         ) %>%
-        full_join(v$data, by = "id") %>%
+        full_join(v$data %>%
+                    rowwise %>%
+                    mutate(`Preferred format (choose 1, or more if you have no preference)` = list(strsplit(`Preferred format (choose 1, or more if you have no preference)`, ",")[[1]] %>% trimws)) %>%
+                    ungroup
+                  , by = "id") %>%
         replace_na(list(Reviews = 0, Status = ifelse(input$admin_mode == "Reviewer", "None", 0), Rejects = 0)) %>%
         mutate(similarity = fuzzyMatching(input$text_match, .)) %>%
         arrange(desc(similarity), Reviews)
       
-      if(input$filter_decisions == "On"){
-        out <- out %>%
-          anti_join(v$decisions %>%
-                      bind_rows(v$changes$decisions) %>%
-                      bind_rows(tibble(id = integer())), # Make sure that there exists an id variable
-                    by = "id"
-          )
-      }
       removeNotification(notif_tbl)
       out
     })
@@ -106,7 +102,10 @@ shinyServer(
     tbl_filtered_data <- reactive({
       notif_tbl <- showNotification("Filtering table")
       out <- tbl_data() %>% 
-        filter(between(Reviews, input$slider_reviews[1], input$slider_reviews[2]))
+        filter(between(Reviews, input$slider_reviews[1], input$slider_reviews[2])) %>%
+        rowwise %>%
+        filter(all(`Preferred format (choose 1, or more if you have no preference)` %in% input$pres_format)) %>%
+        ungroup
       if(input$filter_decisions == "On"){
         out <- out %>%
           anti_join(v$decisions %>%

@@ -37,8 +37,9 @@ shinyUI(
       # uiOutput("n_entries"),
       hr(),
       fluidRow(
-        column(6, radioButtons("filter_decisions", "Decision filter", c("On", "Off"), inline = TRUE)),
-        column(6, sliderInput("slider_reviews", "Total reviews", min = 0, max = 1, value = c(0, 2), step=1))
+        column(4, radioButtons("filter_decisions", "Decision filter", c("On", "Off"))),
+        column(4, sliderInput("slider_reviews", "Total reviews", min = 0, max = 1, value = c(0, 2), step=1)),
+        column(4, checkboxGroupInput("pres_format", "Presentation formats", choices = c("presentation", "poster", "lightning talk"), selected = c("presentation", "poster", "lightning talk")))
       ),
       textInput("text_match", "Fuzzy text sorting"),
       DT::dataTableOutput("tbl_applicants")
