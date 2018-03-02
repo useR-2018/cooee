@@ -246,7 +246,7 @@ shinyServer(
           formText(applicant_data$`Abstract (text only, 1200 characters)`),
           hr(),
           formText("Keywords:", applicant_data$`Keywords (pick at least one)`),
-          formText("Format(s):", applicant_data$`Preferred format (choose 1, or more if you have no preference)`)
+          formText("Format(s):", paste0(applicant_data$`Preferred format (choose 1, or more if you have no preference)`[[1]], collapse=", "))
         )
       })
       
