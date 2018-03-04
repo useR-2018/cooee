@@ -297,9 +297,9 @@ shinyServer(
     })
     
 
-    observeEvent(input$btn_debug, {
-      browser()
-    })
+    # observeEvent(input$btn_debug, {
+    #  browser()
+    # })
     
     onStop(function(){
       save(v, file = "cache_scholarships.Rdata")
