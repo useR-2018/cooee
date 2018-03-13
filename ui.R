@@ -5,7 +5,7 @@ library(googlesheets)
 shinyUI(
   dashboardPage(
     dashboardHeader(
-      title = "useR 2018 Abstract Review",
+      title = "useR 2018 Scholarships Review",
       titleWidth = "450px"
     ),
     dashboardSidebar(
