@@ -177,7 +177,7 @@ shinyServer(
           uploadChanges(v$changes)
           
           ## Download data
-          v$data <- gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8") %>% gs_read_csv(ws=1) %>% mutate(id = row_number())
+          v$data <- gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8") %>% gs_read_csv(ws=1) %>% mutate(id = seq_len(NROW(.)))
           
           ## Download reviews
           v$reviews <- gs_key("11p2FCo0ZNpbovVb9u55wm7mjOpM2aOrdJCT1ohnhYC8") %>% gs_read_csv(ws=2) %>% tail(-1)
@@ -201,7 +201,7 @@ shinyServer(
     })
 
     output$tbl_applicants <- DT::renderDataTable({
-      if(length(v$data) > 0){
+      if(NROW(v$data) > 0){
         ui_tbl_selector <- showNotification("Building table selector")
         
         out <- tbl_filtered_data() %>% 
@@ -228,8 +228,8 @@ shinyServer(
         filter(row_number() == input$tbl_applicants_rows_selected) %>%
         pull(id)
       
-      print(tbl_filtered_data() %>% 
-              filter(row_number() == input$tbl_applicants_rows_selected))
+      print(tbl_data() %>% 
+              filter(id == v$ID))
         
       output$abstract <- renderUI({
         if(is.null(input$tbl_applicants_rows_selected)){
