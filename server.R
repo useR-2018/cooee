@@ -12,6 +12,14 @@ shinyServer(
     if("cache_abstracts.Rdata" %in% list.files()){
       notif_cache <- showNotification("Loading cache")
       load("cache_abstracts.Rdata")
+      if(exists("v")){
+        if(is.reactivevalues(v)){
+          # Update cache format
+          cache <- isolate(reactiveValuesToList(v))
+        }
+      }
+      v <- do.call(reactiveValues, cache)
+      
       removeNotification(notif_cache)
     }
     else{
@@ -370,7 +378,8 @@ shinyServer(
     })
     
     onStop(function(){
-      save(v, file = "cache_abstracts.Rdata")
+      cache <- isolate(reactiveValuesToList(v))
+      save(cache, file = "cache_abstracts.Rdata")
     })
     
     removeNotification(notif_ui)
