@@ -12,6 +12,14 @@ shinyServer(
     if("cache_scholarships.Rdata" %in% list.files()){
       notif_cache <- showNotification("Loading cache")
       load("cache_scholarships.Rdata")
+      if(exists("v")){
+        if(is.reactivevalues(v)){
+          # Update cache format
+          cache <- isolate(reactiveValuesToList(v))
+        }
+      }
+      v <- do.call(reactiveValues, cache)
+      
       removeNotification(notif_cache)
     }
     else{
@@ -302,7 +310,8 @@ shinyServer(
     })
     
     onStop(function(){
-      save(v, file = "cache_scholarships.Rdata")
+      cache <- isolate(reactiveValuesToList(v))
+      save(cache, file = "cache_scholarships.Rdata")
     })
     
     removeNotification(notif_ui)
